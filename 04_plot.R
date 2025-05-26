@@ -16,7 +16,7 @@ files <- c(
 
 if (!length(files)) stop("No annotated CSVs found.")
 
-df <- files %>%
+df <- files %>% 
   set_names() %>%
   map_dfr(
     read_csv,

@@ -24,9 +24,11 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 # Llama models to test (based on your available models)
 LLAMA_MODELS = [
     "llama3.2:3b",
-    'deepseek-r1:8b', 
-    'mistral:7b',
-    'gemma3:4b']
+    "llama3:instruct",
+    "llama3:70b-instruct",
+    "deepseek-r1:8b", 
+    "mistral:7b",
+    "gemma3:4b"]
 
 OPTIONS  = list(range(20))    # 20 "words" (0–19)
 REWARDS  = (-50, 100)         # (incorrect, correct)

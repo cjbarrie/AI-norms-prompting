@@ -1,13 +1,13 @@
-
 #!/usr/bin/env Rscript
 
-# plot_annotations.R
+# plot_annotations_manual.R
 # Reads all *_annotated.csv files and plots the % of runs per model
-# where each annotation flag = 1, in a clean, polished style.
+# using the *_annotated_manual justification columns.
 
 library(tidyverse)
+library(grid)    # for unit()
 
-# 1. Gather & read
+# 1. Gather & read only the manual‐annotation columns
 files <- c(
   "analogy_responses_anthropic_annotated.csv",
   "analogy_responses_openai_annotated.csv",
@@ -16,38 +16,47 @@ files <- c(
 
 if (!length(files)) stop("No annotated CSVs found.")
 
-df <- files %>% 
-  set_names() %>%
-  map_dfr(
-    read_csv,
-    .id = "source",
-    col_types = cols(
-      model         = col_character(),
-      run           = col_integer(),
-      coordination  = col_integer(),
-      optimal_move  = col_integer(),
-      convergence   = col_integer()
-    )
+# Note: .id goes on map_dfr(), not read_csv()
+df <- map_dfr(
+  set_names(files),
+  ~ read_csv(.x,
+             col_types = cols_only(
+               model                                   = col_character(),
+               run                                     = col_integer(),
+               coordination_justification_annotated_manual   = col_integer(),
+               optimal_move_justification_annotated_manual   = col_integer(),
+               convergence_justification_annotated_manual    = col_integer()
+             )
+  ),
+  .id = "source"
+) %>%
+  # 2. Rename the long column names to simple flags
+  rename(
+    coordination = coordination_justification_annotated_manual,
+    optimal_move = optimal_move_justification_annotated_manual,
+    convergence  = convergence_justification_annotated_manual
   )
 
-# 2. Tidy
-df_long <- df %>%
+# 3. Reshape & summarize
+summary_df <- df %>%
   pivot_longer(coordination:convergence,
                names_to  = "annotation",
-               values_to = "flag")
-
-summary_df <- df_long %>%
+               values_to = "flag") %>%
   group_by(model, annotation) %>%
   summarize(pct_true = mean(flag) * 100, .groups = "drop")
 
-# 3. Plot
+# 4. Plot polished, horizontal bars
 p <- ggplot(summary_df, aes(x = model, y = pct_true, fill = annotation)) +
   geom_col(color = "white", size = 0.2,
            position = position_dodge(width = 0.7), width = 0.6) +
   geom_text(aes(label = sprintf("%.0f%%", pct_true)),
             position = position_dodge(width = 0.7),
             hjust = -0.1, size = 3) +
-  scale_fill_brewer(palette = "Set2", name = NULL) +
+  scale_fill_brewer(
+    palette = "Set2", name = NULL,
+    breaks = c("coordination", "optimal_move", "convergence"),
+    labels = c("Coordination", "Optimal move", "Convergence")
+  ) +
   scale_y_continuous(
     labels = scales::percent_format(scale = 1),
     expand = expansion(mult = c(0, 0.15))
@@ -68,7 +77,7 @@ p <- ggplot(summary_df, aes(x = model, y = pct_true, fill = annotation)) +
     plot.margin        = margin(5, 20, 5, 5)
   )
 
-# 4. Save & show
+# 5. Save & display
 ggsave("annotation_summary_all_models.png", p,
        width = 8, height = 5, dpi = 300, bg = "white")
 print(p)
